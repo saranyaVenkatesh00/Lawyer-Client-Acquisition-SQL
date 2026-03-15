@@ -1,0 +1,145 @@
+/*
+Project: Legal Client Acquisition Analysis
+Tool: MySQL
+Purpose: Analyze how lawyers attract clients and identify visibility gaps.
+Dataset: Lawyer / Attorney dataset from Kaggle
+*/
+
+
+CREATE TABLE lawyers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    state VARCHAR(100),
+    firm_size VARCHAR(50),          -- Solo / Small / Mid / Large / BigLaw
+    practice_area VARCHAR(100),     -- Family / Criminal / Corporate etc
+    years_experience INT,
+    has_website BOOLEAN,
+    has_reviews BOOLEAN,
+    avg_rating DECIMAL(3,2),
+    client_count INT
+);
+
+SELECT
+    firm_size,
+    COUNT(*) AS total_lawyers,
+
+    SUM(CASE WHEN has_website = 1 THEN 1 ELSE 0 END) AS lawyers_with_websites,
+
+    SUM(CASE WHEN has_reviews = 1 THEN 1 ELSE 0 END) AS lawyers_with_reviews,
+
+    ROUND(
+        100 * SUM(CASE WHEN has_website = 1 THEN 1 ELSE 0 END) / COUNT(*),
+        1
+    ) AS website_percentage,
+
+    ROUND(
+        100 * SUM(CASE WHEN has_reviews = 1 THEN 1 ELSE 0 END) / COUNT(*),
+        1
+    ) AS review_percentage,
+
+    ROUND(AVG(client_count),0) AS avg_clients_per_lawyer
+
+FROM lawyers
+GROUP BY firm_size
+ORDER BY avg_clients_per_lawyer DESC;
+
+SELECT
+    practice_area,
+
+    COUNT(*) AS total_lawyers,
+
+    SUM(
+        CASE
+            WHEN has_website = 0 AND has_reviews = 0
+            THEN 1
+            ELSE 0
+        END
+    ) AS invisible_lawyers,
+
+    ROUND(
+        100 * SUM(
+            CASE
+                WHEN has_website = 0 AND has_reviews = 0
+                THEN 1
+                ELSE 0
+            END
+        ) / COUNT(*),
+        1
+    ) AS invisible_percentage,
+
+    ROUND(AVG(avg_rating),2) AS average_client_rating
+
+FROM lawyers
+GROUP BY practice_area
+HAVING COUNT(*) > 20
+ORDER BY invisible_percentage DESC
+LIMIT 10;
+
+SELECT
+    practice_area,
+
+    ROUND(
+        AVG(
+            CASE
+                WHEN firm_size = 'Solo'
+                THEN avg_rating
+                ELSE NULL
+            END
+        ),
+        2
+    ) AS solo_lawyer_rating,
+
+    ROUND(
+        AVG(
+            CASE
+                WHEN firm_size != 'Solo'
+                THEN avg_rating
+                ELSE NULL
+            END
+        ),
+        2
+    ) AS firm_lawyer_rating,
+
+    ROUND(
+        AVG(CASE WHEN firm_size = 'Solo' THEN avg_rating END) -
+        AVG(CASE WHEN firm_size != 'Solo' THEN avg_rating END),
+        2
+    ) AS rating_difference
+
+FROM lawyers
+WHERE avg_rating IS NOT NULL
+GROUP BY practice_area
+ORDER BY ABS(rating_difference) DESC;
+
+SELECT
+    practice_area,
+
+    COUNT(*) AS total_lawyers,
+
+    ROUND(AVG(client_count),1) AS avg_clients,
+
+    ROUND(
+        100 * SUM(
+            CASE
+                WHEN has_website = 1 OR has_reviews = 1
+                THEN 1
+                ELSE 0
+            END
+        ) / COUNT(*),
+        1
+    ) AS online_presence_percentage,
+
+    ROUND(AVG(avg_rating),2) AS avg_rating,
+
+    ROUND(
+        AVG(client_count) *
+        (1 - (
+            SUM(CASE WHEN has_website = 1 OR has_reviews = 1 THEN 1 ELSE 0 END)
+            / COUNT(*)
+        )),
+        2
+    ) AS acquisition_gap_score
+
+FROM lawyers
+GROUP BY practice_area
+HAVING COUNT(*) > 30
+ORDER BY acquisition_gap_score DESC;
