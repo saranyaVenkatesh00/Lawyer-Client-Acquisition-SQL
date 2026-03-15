@@ -16,7 +16,8 @@ Average client rating
 Estimated number of clients per year
 
 The dataset was sourced from a publicly available legal dataset on Kaggle.
-_____________________________________________________________________________________________________________________________Questions I Wanted to Answer
+____________________________________________________________________________________________________________________________
+Questions I Wanted to Answer
 _____________________________________________________________________________________________________________________________
 While exploring the dataset, I focused on a few key questions:
 
